@@ -1,7 +1,10 @@
 # Import streamlit for app dev
 import streamlit as st
 
-# Import transformer classes for generaiton
+# Import hf auth token
+from apikeys import hf_auth_token
+
+# Import transformer classes for generation
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer
 # Import torch for datatype attributes 
 import torch
@@ -23,16 +26,16 @@ from pathlib import Path
 # Define variable to hold llama2 weights naming 
 name = "meta-llama/Llama-2-70b-chat-hf"
 # Set auth token variable from hugging face 
-auth_token = "YOUR HUGGING FACE AUTH TOKEN HERE"
+auth_token = hf_auth_token
 
 @st.cache_resource
 def get_tokenizer_model():
     # Create tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(name, cache_dir='./model/', use_auth_token=auth_token)
+    tokenizer = AutoTokenizer.from_pretrained(name, cache_dir='./model/', token=auth_token)
 
     # Create model
     model = AutoModelForCausalLM.from_pretrained(name, cache_dir='./model/'
-                            , use_auth_token=auth_token, torch_dtype=torch.float16, 
+                            , token=auth_token, torch_dtype=torch.float16, 
                             rope_scaling={"type": "dynamic", "factor": 2}, load_in_8bit=True) 
 
     return tokenizer, model
@@ -82,7 +85,12 @@ PyMuPDFReader = download_loader("PyMuPDFReader")
 # Create PDF Loader
 loader = PyMuPDFReader()
 # Load documents 
-documents = loader.load(file_path=Path('./data/annualreport.pdf'), metadata=True)
+documents = loader.load(file_path=Path('./Data/annualreport.pdf'))
+
+# New code to convert PosixPath objects to strings
+for document in documents:
+    if 'file_path' in document.metadata:
+        document.metadata['file_path'] = str(document.metadata['file_path'])
 
 # Create an index - we'll be able to query this in a sec
 index = VectorStoreIndex.from_documents(documents)
@@ -106,5 +114,3 @@ if prompt:
     # Display source text
     with st.expander('Source Text'):
         st.write(response.get_formatted_sources())
-
-
